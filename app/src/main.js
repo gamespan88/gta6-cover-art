@@ -1,18 +1,21 @@
 // VICE FRAME — Cover Lab: the editor.
 // Wires the page to the cover engine (./cover.js): photos from the person's own machine (file picker or
-// drag and drop, nothing is uploaded), a tray of loaded photos, three cover templates, four colour
-// grades, per-panel crop / pan / zoom and grade override, a live preview, and one-click PNG exports in
-// the three post sizes. A `?shot=` query sets up a fixed scene for screenshots instead (./shots.js).
+// drag and drop, nothing is uploaded), a tray of loaded photos, seven cover layouts, seven colour
+// grades, per-panel crop / pan / zoom and grade override, a story title with its tagline and neon
+// script line, a star rating, a live preview, and one-click PNG exports in the three post sizes.
+// A `?shot=` query sets up a fixed scene for screenshots instead (./shots.js).
 import {
   GRADES,
   TEMPLATES,
   createCoverState,
   createPanel,
+  exportLandscapeCover,
+  exportPortraitCover,
+  exportSquareCover,
   fillAllPanels,
   fillPanelsWithPhotos,
   panelRects,
   renderCover,
-  renderCoverAt,
   syncPanels,
 } from './cover.js';
 import { runShot } from './shots.js';
@@ -21,7 +24,9 @@ const canvas = document.getElementById('cover');
 const tray = document.getElementById('tray');
 const status = document.getElementById('status');
 const captionInput = document.getElementById('caption');
-const subtitleInput = document.getElementById('subtitle');
+const taglineInput = document.getElementById('tagline');
+const scriptInput = document.getElementById('script-line');
+const starsSelect = document.getElementById('stars');
 const zoomInput = document.getElementById('zoom');
 const panelGrade = document.getElementById('panel-grade');
 const panelLabel = document.getElementById('panel-label');
@@ -152,13 +157,21 @@ for (const button of document.querySelectorAll('[data-title-style]')) {
   });
 }
 
-// Caption and subtitle.
+// The cover's words: a story title, its tagline, the neon script line and the star rating.
 captionInput.addEventListener('input', () => {
   state.caption = captionInput.value;
   redraw();
 });
-subtitleInput.addEventListener('input', () => {
-  state.subtitle = subtitleInput.value;
+taglineInput.addEventListener('input', () => {
+  state.tagline = taglineInput.value;
+  redraw();
+});
+scriptInput.addEventListener('input', () => {
+  state.scriptLine = scriptInput.value;
+  redraw();
+});
+starsSelect.addEventListener('change', () => {
+  state.stars = Number(starsSelect.value);
   redraw();
 });
 
@@ -250,28 +263,36 @@ for (const button of document.querySelectorAll('[data-size]')) {
   });
 }
 
-// Exports: render the cover offscreen at the exact size and download the PNG.
+// Exports: render the cover offscreen at the exact post size and download the PNG.
+const EXPORTERS = {
+  '1080x1080': exportSquareCover,
+  '1080x1350': exportPortraitCover,
+  '1920x1080': exportLandscapeCover,
+};
 for (const button of document.querySelectorAll('[data-export]')) {
   button.addEventListener('click', () => {
-    const [w, h] = button.dataset.export.split('x').map(Number);
-    const off = renderCoverAt(state, photos.map((p) => p.img), w, h);
+    const exporter = EXPORTERS[button.dataset.export] ?? exportSquareCover;
+    const off = exporter(state, photos.map((p) => p.img));
     off.toBlob((blob) => {
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
-      a.download = `vice-frame-cover-${w}x${h}.png`;
+      a.download = `vice-frame-cover-${button.dataset.export}.png`;
       a.click();
-      status.textContent = `Saved vice-frame-cover-${w}x${h}.png`;
+      status.textContent = `Saved vice-frame-cover-${button.dataset.export}.png`;
     }, 'image/png');
   });
 }
 
-// The five bundled samples, free to use, wait in the tray so a cover is one click away.
+// The seven bundled samples, free to use, wait in the tray so a cover is one click away: portraits,
+// a car chase, an empty neon street and the pier at golden hour.
 const SAMPLES = [
   ['pier', 'Pier at golden hour'],
   ['boulevard', 'Boulevard portrait'],
   ['neon', 'Neon street portrait'],
   ['drive', 'Sunset boulevard drive'],
   ['pool', 'Rooftop pool at dusk'],
+  ['chase', 'Sunset Chase'],
+  ['neonstreet', 'Neon Harbor'],
 ];
 
 /** Boot: load the font and the samples, then either set a shot scene or open the editor. */
@@ -290,7 +311,7 @@ async function boot() {
     await runShot(shot, query, {
       state,
       captionInput,
-      subtitleInput,
+      taglineInput,
       async loadSample(name, caption, grade) {
         // `name` may name one sample or a comma list of them: a list fills the panels in turn, a
         // different photo in each panel, while a single name fills the whole collage as before.
@@ -305,10 +326,20 @@ async function boot() {
           state.caption = caption;
           captionInput.value = caption;
         }
-        const sub = query.get('subtitle');
-        if (sub) {
-          state.subtitle = sub;
-          subtitleInput.value = sub;
+        const tag = query.get('tagline') ?? query.get('subtitle');
+        if (tag) {
+          state.tagline = tag;
+          taglineInput.value = tag;
+        }
+        const scriptLine = query.get('script');
+        if (scriptLine) {
+          state.scriptLine = scriptLine;
+          scriptInput.value = scriptLine;
+        }
+        const stars = query.get('stars');
+        if (stars !== null && stars !== '') {
+          state.stars = Math.max(0, Math.min(5, Number(stars) || 0));
+          starsSelect.value = String(state.stars);
         }
         if (grade) {
           state.grade = grade;
@@ -335,6 +366,16 @@ async function boot() {
         // An editor scene also shows the samples it did not place, waiting in the tray.
         const img = await loadImage(`samples/${name}.jpg`);
         addPhoto(img, name);
+      },
+      setPreviewSize(w, h) {
+        // An editor scene can open at a post size (the landscape one shows off the Wide Hero).
+        previewSize = { w, h };
+        canvas.width = w;
+        canvas.height = h;
+        for (const el of document.querySelectorAll('[data-size]')) {
+          el.classList.toggle('on', el.dataset.size === `${w}x${h}`);
+        }
+        redraw();
       },
       redraw,
     });

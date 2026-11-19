@@ -189,3 +189,25 @@ body.shot-cover .stage { padding: 0; }
 body.shot-cover #cover { width: 100vw; height: 100vh; max-width: none; max-height: none; box-shadow: none; cursor: default; }
 
 body.shot-editor .panel { max-height: 100vh; }
+
+/* The editor screenshot is taken in one frame, so the shot scene compacts the control column —
+   tighter padding, smaller thumbs and type — until every group, Photos to Export, fits the frame
+   whole. Nothing is removed; the live editor keeps its roomier spacing. */
+body.shot-editor .panel { padding: 12px 14px 14px; }
+body.shot-editor .brand h1 { font-size: 26px; }
+body.shot-editor .tagline { font-size: 12px; margin: 3px 0 0; }
+body.shot-editor .group { margin-top: 6px; padding-top: 7px; }
+body.shot-editor .group h2 { margin-bottom: 6px; font-size: 12px; }
+body.shot-editor .drop { padding: 8px; }
+body.shot-editor .drop-note { display: none; }
+body.shot-editor .tray { margin-top: 6px; gap: 6px; }
+body.shot-editor .tray-photo { width: 42px; height: 42px; }
+body.shot-editor .hint { display: none; }
+body.shot-editor .seg { gap: 5px; margin-bottom: 6px; }
+body.shot-editor .seg button, body.shot-editor .row button, body.shot-editor .exports button { padding: 5px 8px; font-size: 12px; }
+body.shot-editor .field { margin-bottom: 6px; font-size: 12px; gap: 3px; }
+body.shot-editor .field input[type='text'], body.shot-editor .field select { padding: 5px 8px; }
+body.shot-editor #caption { font-size: 15px; }
+body.shot-editor .panel-label { margin-bottom: 4px; }
+body.shot-editor .stage { padding: 16px; }
+body.shot-editor #status { margin-top: 4px; min-height: 0; }

@@ -34,6 +34,7 @@
         <button type="button" data-template="duo">Duo Split</button>
         <button type="button" data-template="quad">Quad Four</button>
         <button type="button" data-template="strip">Strip Poster</button>
+        <button type="button" data-template="wide">Wide Hero</button>
       </div>
       <div class="seg" role="group" aria-label="Colour grade">
         <button type="button" data-grade="sunset" class="on"><i class="sw sw-sunset"></i>Sunset</button>
@@ -53,11 +54,24 @@
         <button type="button" data-title-style="gradient" class="on">Gradient</button>
         <button type="button" data-title-style="script">Script + Badge</button>
       </div>
-      <label class="field">Headline
-        <input id="caption" type="text" maxlength="26" value="SUNSET HEIST">
+      <label class="field">Title
+        <input id="caption" type="text" maxlength="26" value="NEON HARBOR">
       </label>
-      <label class="field">Subtitle
-        <input id="subtitle" type="text" maxlength="42" value="A VICE FRAME COVER">
+      <label class="field">Tagline
+        <input id="tagline" type="text" maxlength="42" value="ONE CITY. EVERY LIGHT A LIE.">
+      </label>
+      <label class="field">Script line
+        <input id="script-line" type="text" maxlength="42" value="The Night Is Ours">
+      </label>
+      <label class="field">Star rating
+        <select id="stars">
+          <option value="0">No stars</option>
+          <option value="1">★☆☆☆☆</option>
+          <option value="2">★★☆☆☆</option>
+          <option value="3">★★★☆☆</option>
+          <option value="4" selected>★★★★☆</option>
+          <option value="5">★★★★★</option>
+        </select>
       </label>
     </section>
 

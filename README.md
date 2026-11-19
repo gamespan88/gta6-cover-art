@@ -14,10 +14,11 @@ Built for the make.fun bounty [Make GTA 6 Cover Art](https://make.fun/competitio
 
 ## What it does
 
-- **Six cover layouts** — the Classic Collage (a seven-panel grid with a tall hero panel), the Hero
+- **Seven cover layouts** — the Classic Collage (a seven-panel grid with a tall hero panel), the Hero
   Five (a hero panel with a four-panel grid beside it), the Grid Nine (a dense three-by-three grid),
-  the Duo Split (two big portraits side by side), the Quad Four (four bold quarters) and the Strip
-  Poster (cinematic horizontal bands, columns in portrait).
+  the Duo Split (two big portraits side by side), the Quad Four (four bold quarters), the Strip
+  Poster (cinematic horizontal bands, columns in portrait) and the Wide Hero (a landscape hero
+  panel with a wide scene and two portraits beside it, composed for the 1920 × 1080 post).
 - **Any photos, a different one in every panel** — pick files or drag and drop them onto the cover;
   every photo waits in a tray. Click a panel to place the chosen photo there, double-click to swap
   it, drag inside a panel to reposition it, scroll or use the slider to zoom — each panel keeps its
@@ -25,11 +26,14 @@ Built for the make.fun bounty [Make GTA 6 Cover Art](https://make.fun/competitio
   its own crop of it.
 - **Seven colour grades** — Sunset (warm orange-pink light), Neon Nights (teal and magenta), the
   Heatwave and Ultraviolet gradient maps (the photo recoloured through a full colour ramp), Duotone
-  Ink (a posterized two-tone print look), Halftone Print (the photo redrawn as ink dots on paper)
-  and Raw (a light touch). A panel can override the cover's grade.
-- **Three title styles** — Block (solid letters, a heavy outline and a hard offset shadow in the hot
-  accent), Gradient (a sunset gradient fill over a halftone-dot band) and Script + Badge (a gradient
-  headline with a tilted EST. 2026 sticker badge and the subtitle as a glowing neon script line).
+  Ink (a posterized two-tone print look whose curve is face-safe: its band edges crowd the skin
+  midtones, so faces keep their eyes and expression), Halftone Print (the photo redrawn as ink dots
+  on paper) and Raw (a light touch). A panel can override the cover's grade.
+- **A story title system** — every cover is lettered with a story title and a letterspaced tagline,
+  both editable, in three styles: Block (solid letters, a heavy outline and a hard offset shadow in
+  the hot accent), Gradient (a sunset gradient fill over a halftone-dot band) and Script + Badge (a
+  gradient headline with a tilted EST. 2026 sticker badge and a glowing neon script line under the
+  tagline). A star rating of up to five stars dresses the band.
 - **Original cover art** — empty panels are painted by the app itself: a graded sky, a retro sun disc, a
   lit skyline and palm silhouettes, all drawn in canvas code. Panels are finished with ink keylines,
   print grain and a vignette. The headline is lettered in Anton and the script line in Yellowtail
@@ -46,11 +50,12 @@ Serve `app/` with any static file server and open it in a desktop browser — or
 node serve.ts        # then open http://localhost:8080
 ```
 
-Five sample photos are bundled in `app/samples/` (made with an image model, free to use) so a first
+Seven sample photos are bundled in `app/samples/` (made with an image model, free to use) — portraits,
+an orange sports car on a deco boulevard, an empty neon street, a rooftop pool and the pier — so a first
 cover is one click away. Fixed screenshot scenes are available through the query string, e.g.
 `?shot=cover&photo=pier&caption=Sunset%20Heist` and `?shot=editor&photo=boulevard`; a comma list in
 `photo` (as in `photo=neon,boulevard,pier`) deals a different photo into each panel, and `template`,
-`grade` and `title` params restyle the scene.
+`grade`, `title`, `tagline`, `script` and `stars` params restyle the scene and its words.
 
 ## Hand it in
 

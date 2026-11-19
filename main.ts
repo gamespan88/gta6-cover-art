@@ -5,11 +5,12 @@
 // the summary the judge reads, with the vendored make.fun library.
 //
 // The app itself: a multi-panel GTA-style cover maker. A person's own photos fill a collage of panels
-// (three templates), each panel cropped, panned and zoomed, graded Sunset / Neon Nights / Duotone Ink /
-// Raw, lettered with a big condensed caption, and exported as a PNG at 1080 x 1080, 1080 x 1350 or
-// 1920 x 1080. Its lettering is Anton (SIL Open Font License, vendored under app/fonts/) and every
-// ornament on the cover — the retro sun, the palm silhouettes, the skyline — is drawn by its own canvas
-// code: no Rockstar Games logo, artwork or font anywhere.
+// (seven layouts), each panel cropped, panned and zoomed, graded Sunset / Neon Nights / Heatwave /
+// Ultraviolet / Duotone Ink / Halftone Print / Raw, lettered with a story title, its tagline and a
+// neon script line, and exported as a PNG at 1080 x 1080, 1080 x 1350 or 1920 x 1080. Its lettering
+// is Anton (SIL Open Font License, vendored under app/fonts/) and every ornament on the cover — the
+// retro sun, the palm silhouettes, the skyline — is drawn by its own canvas code: no Rockstar Games
+// logo, artwork or font anywhere.
 //
 // Serve it locally with `node serve.ts`, then open http://localhost:8080.
 // Outside the grader's container, MAKEFUN_OUTPUT_DIR stands in for /output:
