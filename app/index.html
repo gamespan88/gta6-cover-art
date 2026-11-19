@@ -29,19 +29,30 @@
       <h2>2 · Layout</h2>
       <div class="seg" role="group" aria-label="Cover template">
         <button type="button" data-template="classic" class="on">Classic Collage</button>
+        <button type="button" data-template="five">Hero Five</button>
+        <button type="button" data-template="grid9">Grid Nine</button>
         <button type="button" data-template="duo">Duo Split</button>
+        <button type="button" data-template="quad">Quad Four</button>
         <button type="button" data-template="strip">Strip Poster</button>
       </div>
       <div class="seg" role="group" aria-label="Colour grade">
         <button type="button" data-grade="sunset" class="on"><i class="sw sw-sunset"></i>Sunset</button>
         <button type="button" data-grade="neon"><i class="sw sw-neon"></i>Neon Nights</button>
+        <button type="button" data-grade="heatwave"><i class="sw sw-heatwave"></i>Heatwave Map</button>
+        <button type="button" data-grade="ultraviolet"><i class="sw sw-ultraviolet"></i>Ultraviolet Map</button>
         <button type="button" data-grade="duotone"><i class="sw sw-duotone"></i>Duotone Ink</button>
+        <button type="button" data-grade="halftone"><i class="sw sw-halftone"></i>Halftone Print</button>
         <button type="button" data-grade="raw"><i class="sw sw-raw"></i>Raw</button>
       </div>
     </section>
 
     <section class="group">
       <h2>3 · Caption</h2>
+      <div class="seg" role="group" aria-label="Title style">
+        <button type="button" data-title-style="block">Block</button>
+        <button type="button" data-title-style="gradient" class="on">Gradient</button>
+        <button type="button" data-title-style="script">Script + Badge</button>
+      </div>
       <label class="field">Headline
         <input id="caption" type="text" maxlength="26" value="SUNSET HEIST">
       </label>
@@ -61,7 +72,10 @@
           <option value="">Cover grade</option>
           <option value="sunset">Sunset</option>
           <option value="neon">Neon Nights</option>
+          <option value="heatwave">Heatwave Map</option>
+          <option value="ultraviolet">Ultraviolet Map</option>
           <option value="duotone">Duotone Ink</option>
+          <option value="halftone">Halftone Print</option>
           <option value="raw">Raw</option>
         </select>
       </label>

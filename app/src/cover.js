@@ -6,7 +6,10 @@
 export const GRADES = [
   { id: 'sunset', name: 'Sunset' },
   { id: 'neon', name: 'Neon Nights' },
+  { id: 'heatwave', name: 'Heatwave Map' },
+  { id: 'ultraviolet', name: 'Ultraviolet Map' },
   { id: 'duotone', name: 'Duotone Ink' },
+  { id: 'halftone', name: 'Halftone Print' },
   { id: 'raw', name: 'Raw' },
 ];
 
@@ -35,6 +38,31 @@ const PALETTES = {
     ink: '#221243',
     sun: '#ffe3b3',
     caption: ['#ffe3b3', '#ffc46b'],
+    accent: '#ff5d7a',
+  },
+  heatwave: {
+    sky: ['#170b33', '#6d1a5e', '#d6336c', '#ff7a3c', '#ffc46b', '#fff1cf'],
+    band: ['#170b33', '#3d1150'],
+    ink: '#1c0b30',
+    sun: '#ffc46b',
+    caption: ['#ffffff', '#ffc46b'],
+    accent: '#ff7a3c',
+  },
+  ultraviolet: {
+    sky: ['#04060f', '#1b1040', '#5b2a9d', '#2e7fd9', '#19e3d2', '#eafffb'],
+    band: ['#04060f', '#160b38'],
+    ink: '#04060f',
+    sun: '#19e3d2',
+    caption: ['#ffffff', '#7df9ec'],
+    accent: '#2e7fd9',
+  },
+  halftone: {
+    sky: ['#2e1a47', '#7b2d5b', '#e85d75', '#ff9e5e', '#ffd97a'],
+    band: ['#180b30', '#2a1250'],
+    ink: '#221243',
+    paper: '#f3e9d2',
+    sun: '#ffd97a',
+    caption: ['#ffe9c4', '#ffc46b'],
     accent: '#ff5d7a',
   },
   raw: {
@@ -99,6 +127,48 @@ export const TEMPLATES = [
       ];
     },
   },
+  {
+    id: 'five',
+    name: 'Hero Five',
+    panels() {
+      const t = TITLE_BAND;
+      const b = 1 - t;
+      return [
+        { x: 0.000, y: t, w: 0.520, h: b },
+        { x: 0.520, y: t, w: 0.240, h: b / 2 },
+        { x: 0.760, y: t, w: 0.240, h: b / 2 },
+        { x: 0.520, y: t + b / 2, w: 0.240, h: b / 2 },
+        { x: 0.760, y: t + b / 2, w: 0.240, h: b / 2 },
+      ];
+    },
+  },
+  {
+    id: 'grid9',
+    name: 'Grid Nine',
+    panels() {
+      const t = TITLE_BAND;
+      const rh = (1 - t) / 3;
+      const out = [];
+      for (let r = 0; r < 3; r++) {
+        for (let c = 0; c < 3; c++) out.push({ x: c / 3, y: t + r * rh, w: 1 / 3, h: rh });
+      }
+      return out;
+    },
+  },
+  {
+    id: 'quad',
+    name: 'Quad Four',
+    panels() {
+      const t = TITLE_BAND;
+      const rh = (1 - t) / 2;
+      return [
+        { x: 0.000, y: t, w: 0.500, h: rh },
+        { x: 0.500, y: t, w: 0.500, h: rh },
+        { x: 0.000, y: t + rh, w: 0.500, h: rh },
+        { x: 0.500, y: t + rh, w: 0.500, h: rh },
+      ];
+    },
+  },
 ];
 
 /** The panel rectangles (in canvas pixels) a template lays out at size w x h. */
@@ -107,11 +177,12 @@ export function panelRects(templateId, w, h) {
   return template.panels(w, h).map((p) => ({ x: p.x * w, y: p.y * h, w: p.w * w, h: p.h * h }));
 }
 
-/** A fresh cover state: the classic collage, the sunset grade and no photos yet. */
+/** A fresh cover state: the classic collage, the sunset grade, the gradient title and no photos yet. */
 export function createCoverState() {
   return {
     template: 'classic',
     grade: 'sunset',
+    titleStyle: 'gradient',
     caption: 'SUNSET HEIST',
     subtitle: 'A VICE FRAME COVER',
     panels: [],
@@ -142,6 +213,31 @@ export function fillAllPanels(state, photoIndex) {
   state.panels = Array.from({ length: count }, (_, i) => ({
     ...createPanel(photoIndex),
     ...FILL_CROPS[i % FILL_CROPS.length],
+  }));
+}
+
+// Crops used when several different photos share one cover: the hero panel keeps nearly the whole of
+// its photo, the mid panels sit a little closer, and the small panels go in on a detail of their own
+// photo — so each panel reads as its own scene of the collage, not a repeat of a neighbour's.
+const MULTI_CROPS = [
+  { zoom: 1.05, ox: 0.0, oy: 0.08 },
+  { zoom: 1.22, ox: 0.05, oy: 0.05 },
+  { zoom: 1.18, ox: -0.05, oy: 0.7 },
+  { zoom: 1.85, ox: 0.15, oy: 0.3 },
+  { zoom: 1.7, ox: -0.15, oy: 0.1 },
+  { zoom: 1.35, ox: 0.0, oy: -0.1 },
+  { zoom: 1.45, ox: 0.05, oy: -0.35 },
+];
+
+/**
+ * Fills the panels with several photos in turn: panel i takes photoIndices[i % photoIndices.length],
+ * each with its own crop from MULTI_CROPS, so a collage can star a different photo in every panel.
+ */
+export function fillPanelsWithPhotos(state, photoIndices) {
+  const count = TEMPLATES.find((t) => t.id === state.template).panels(100, 100).length;
+  state.panels = Array.from({ length: count }, (_, i) => ({
+    ...createPanel(photoIndices[i % photoIndices.length]),
+    ...MULTI_CROPS[i % MULTI_CROPS.length],
   }));
 }
 
@@ -256,38 +352,43 @@ export function drawSkyline(ctx, x, y, w, h, ink, lit) {
 // ---------------------------------------------------------------------------
 // Grades: each panel's photo is drawn to a small offscreen canvas, graded there, then placed.
 
-// Duotone ramp: 256-entry lookup from luminance to the ink poster's colours, built once per palette.
-const duotoneLuts = {};
-function duotoneLut(palette) {
-  if (duotoneLuts[palette.ink]) return duotoneLuts[palette.ink];
+// Gradient maps: a 256-entry lookup from luminance to a palette's colour ramp, built once per palette
+// and level count. The map grades (Heatwave, Ultraviolet) run it smooth; Duotone Ink posterizes it to
+// six bands for its print look.
+const gradientLuts = {};
+function gradientLut(palette, levels) {
+  const key = `${palette.ink}|${levels}`;
+  if (gradientLuts[key]) return gradientLuts[key];
   const stops = palette.sky.map((hex) => [
     parseInt(hex.slice(1, 3), 16),
     parseInt(hex.slice(3, 5), 16),
     parseInt(hex.slice(5, 7), 16),
   ]);
   const lut = new Uint8Array(256 * 3);
-  const levels = 6; // posterize to six bands
   for (let i = 0; i < 256; i++) {
-    const band = Math.min(levels - 1, Math.floor((i / 256) * levels));
-    const t = band / (levels - 1);
+    let t = i / 255;
+    if (levels > 0) {
+      const band = Math.min(levels - 1, Math.floor((i / 256) * levels));
+      t = band / (levels - 1);
+    }
     const pos = t * (stops.length - 1);
     const a = stops[Math.floor(pos)];
     const b = stops[Math.min(stops.length - 1, Math.floor(pos) + 1)];
     const f = pos - Math.floor(pos);
     for (let c = 0; c < 3; c++) lut[i * 3 + c] = Math.round(a[c] + (b[c] - a[c]) * f);
   }
-  duotoneLuts[palette.ink] = lut;
+  gradientLuts[key] = lut;
   return lut;
 }
 
-/** Applies the duotone grade in place: luminance posterized through the palette ramp. */
-function applyDuotone(canvas, palette) {
+/** Applies a gradient map in place: every pixel's luminance is recoloured through the palette ramp. */
+function applyGradientMap(canvas, palette, levels) {
   const ctx = canvas.getContext('2d');
   const { width, height } = canvas;
   if (!width || !height) return;
   const data = ctx.getImageData(0, 0, width, height);
   const px = data.data;
-  const lut = duotoneLut(palette);
+  const lut = gradientLut(palette, levels);
   for (let i = 0; i < px.length; i += 4) {
     const lum = Math.min(255, Math.max(0, Math.round(0.299 * px[i] + 0.587 * px[i + 1] + 0.114 * px[i + 2])));
     px[i] = lut[lum * 3];
@@ -297,12 +398,40 @@ function applyDuotone(canvas, palette) {
   ctx.putImageData(data, 0, 0);
 }
 
+/** Applies the halftone print grade in place: the photo redrawn as ink dots on paper, dot size by shade. */
+function applyHalftone(canvas, palette) {
+  const ctx = canvas.getContext('2d');
+  const { width, height } = canvas;
+  if (!width || !height) return;
+  const src = ctx.getImageData(0, 0, width, height).data;
+  const cell = Math.max(5, Math.round(Math.min(width, height) / 44));
+  ctx.fillStyle = palette.paper ?? '#f3e9d2';
+  ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = palette.ink;
+  for (let cy = cell / 2; cy < height; cy += cell) {
+    for (let cx = cell / 2; cx < width; cx += cell) {
+      const px = Math.min(width - 1, Math.floor(cx));
+      const py = Math.min(height - 1, Math.floor(cy));
+      const i = (py * width + px) * 4;
+      const lum = (0.299 * src[i] + 0.587 * src[i + 1] + 0.114 * src[i + 2]) / 255;
+      const r = cell * 0.58 * (1 - lum);
+      if (r < 0.5) continue;
+      ctx.beginPath();
+      ctx.arc(cx, cy, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+}
+
 /** The CSS filter a grade applies while a photo is drawn. */
 function gradeFilter(grade) {
   switch (grade) {
     case 'sunset': return 'saturate(1.5) contrast(1.14) sepia(0.4) hue-rotate(-10deg) brightness(1.02)';
     case 'neon': return 'saturate(1.55) contrast(1.16) hue-rotate(6deg) brightness(1.02)';
     case 'duotone': return 'saturate(0.25) contrast(1.12) brightness(1.02)';
+    case 'heatwave': return 'saturate(0.32) contrast(1.12) brightness(1.03)';
+    case 'ultraviolet': return 'saturate(0.32) contrast(1.12) brightness(1.03)';
+    case 'halftone': return 'saturate(0.2) contrast(1.22) brightness(1.04)';
     default: return 'saturate(1.1) contrast(1.05)';
   }
 }
@@ -345,6 +474,14 @@ function paintGradeLight(ctx, rect, grade, palette) {
     const shade = ctx.createLinearGradient(x, y + h * 0.5, x, y + h);
     shade.addColorStop(0, 'rgba(7, 4, 24, 0)');
     shade.addColorStop(1, 'rgba(7, 4, 24, 0.42)');
+    ctx.fillStyle = shade;
+    ctx.fillRect(x, y, w, h);
+  } else if (grade === 'heatwave' || grade === 'ultraviolet') {
+    // The map grades carry their own colour; they only take the shared shade at the foot for depth.
+    ctx.globalCompositeOperation = 'multiply';
+    const shade = ctx.createLinearGradient(x, y + h * 0.5, x, y + h);
+    shade.addColorStop(0, 'rgba(10, 4, 20, 0)');
+    shade.addColorStop(1, 'rgba(10, 4, 20, 0.36)');
     ctx.fillStyle = shade;
     ctx.fillRect(x, y, w, h);
   }
@@ -397,7 +534,12 @@ function paintPanel(ctx, rect, panel, photos, grade, index) {
   octx.filter = gradeFilter(ownGrade);
   octx.drawImage(photo, dx, dy, dw, dh);
   octx.filter = 'none';
-  if (ownGrade === 'duotone') applyDuotone(off, ownPalette);
+  if (ownGrade === 'duotone') applyGradientMap(off, ownPalette, 6);
+  else if (ownGrade === 'heatwave' || ownGrade === 'ultraviolet') {
+    applyGradientMap(off, ownPalette, 0);
+    paintGradeLight(octx, { x: 0, y: 0, w: off.width, h: off.height }, ownGrade, ownPalette);
+  }
+  else if (ownGrade === 'halftone') applyHalftone(off, ownPalette);
   else paintGradeLight(octx, { x: 0, y: 0, w: off.width, h: off.height }, ownGrade, ownPalette);
   ctx.drawImage(off, rect.x, rect.y);
 }
@@ -406,13 +548,29 @@ function paintPanel(ctx, rect, panel, photos, grade, index) {
 // The title band and caption.
 
 /** Paints the band behind the caption: a deep gradient and the retro sun sitting whole inside it. */
-function paintTitleBand(ctx, w, h, palette, grade) {
+function paintTitleBand(ctx, w, h, palette, titleStyle) {
   const bandH = h * TITLE_BAND;
   const grad = ctx.createLinearGradient(0, 0, 0, bandH);
   grad.addColorStop(0, palette.band[0]);
   grad.addColorStop(1, palette.band[1]);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, bandH);
+  if (titleStyle === 'gradient') {
+    // A halftone dot field texture across the band, fine enough to read as print, not noise.
+    ctx.save();
+    ctx.fillStyle = palette.accent;
+    const step = bandH * 0.17;
+    for (let row = 0; row < 6; row++) {
+      for (let col = 0; col * step < w; col++) {
+        const fx = (col * step) / w;
+        ctx.globalAlpha = 0.13 * (1 - Math.abs(fx - 0.5));
+        ctx.beginPath();
+        ctx.arc(col * step + (row % 2) * step * 0.5, row * step + step * 0.4, step * 0.13, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
   // A whole retro sun sits inside the band at the right, clear of the centred caption. Nothing else
   // shares the band: a silhouette clipped by the band's edge reads as a stray mark, not an ornament.
   drawSunDisc(ctx, w * 0.94, bandH * 0.5, bandH * 0.33, palette.sun);
@@ -421,16 +579,48 @@ function paintTitleBand(ctx, w, h, palette, grade) {
   ctx.fillRect(0, bandH, w, Math.max(2, h * 0.004));
 }
 
-/** Letters the caption: gradient-filled Anton capitals with a heavy ink outline and a hard offset shadow. */
+/** Draws the tilted sticker badge the Script title style wears at the band's left: EST. 2026. */
+function drawBadge(ctx, w, bandH, palette) {
+  const text = 'EST. 2026';
+  const size = bandH * 0.14;
+  ctx.save();
+  ctx.font = `${size}px Anton, sans-serif`;
+  try { ctx.letterSpacing = `${size * 0.22}px`; } catch { /* older engines: spacing is a garnish */ }
+  const bw = ctx.measureText(text).width + size * 1.7;
+  const bh = size * 2.0;
+  ctx.translate(w * 0.03 + bw / 2, bandH * 0.5);
+  ctx.rotate(-0.13);
+  ctx.fillStyle = palette.accent;
+  ctx.beginPath();
+  if (ctx.roundRect) ctx.roundRect(-bw / 2, -bh / 2, bw, bh, bh / 2);
+  else ctx.rect(-bw / 2, -bh / 2, bw, bh);
+  ctx.fill();
+  ctx.fillStyle = palette.ink;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(text, 0, size * 0.05);
+  ctx.restore();
+}
+
+/**
+ * Letters the caption in the state's title style:
+ * - block: solid fill, a heavy ink outline and a hard offset shadow in the palette's hot accent;
+ * - gradient: the fill runs down the palette's caption gradient, over an ink shadow and outline;
+ * - script: a gradient headline with a tilted EST. 2026 badge, and the subtitle as a glowing neon
+ *   script line (Yellowtail, SIL OFL) under it instead of letterspaced capitals.
+ */
 function letterCaption(ctx, w, h, state, palette) {
   const main = (state.caption || '').trim().toUpperCase();
-  const sub = (state.subtitle || '').trim().toUpperCase();
+  const subRaw = (state.subtitle || '').trim();
+  const sub = subRaw.toUpperCase();
+  const style = state.titleStyle ?? 'gradient';
+  const script = style === 'script';
   const bandH = h * TITLE_BAND;
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   if (main) {
-    let size = bandH * (sub ? 0.52 : 0.62);
+    let size = bandH * (script ? 0.46 : sub ? 0.52 : 0.62);
     const setFont = () => { ctx.font = `${size}px Anton, sans-serif`; };
     setFont();
     while (ctx.measureText(main).width > w * 0.9 && size > 10) {
@@ -438,24 +628,50 @@ function letterCaption(ctx, w, h, state, palette) {
       setFont();
     }
     const cx = w / 2;
-    const cy = sub ? bandH * 0.42 : bandH * 0.52;
+    const cy = script ? bandH * 0.33 : sub ? bandH * 0.42 : bandH * 0.52;
     ctx.save();
     ctx.translate(cx, cy);
     ctx.transform(1, 0, -0.055, 1, 0, 0); // the genre's slight forward lean
     ctx.lineJoin = 'round';
-    ctx.strokeStyle = palette.ink;
     ctx.lineWidth = size * 0.17;
-    ctx.fillStyle = palette.ink;
-    ctx.fillText(main, size * 0.045, size * 0.06); // hard shadow pass
-    ctx.strokeText(main, 0, 0);
-    const fill = ctx.createLinearGradient(0, -size / 2, 0, size / 2);
-    fill.addColorStop(0, palette.caption[0]);
-    fill.addColorStop(1, palette.caption[1]);
-    ctx.fillStyle = fill;
-    ctx.fillText(main, 0, 0);
+    ctx.strokeStyle = palette.ink;
+    if (style === 'block') {
+      ctx.fillStyle = palette.accent;
+      ctx.fillText(main, size * 0.055, size * 0.065); // hard offset shadow in the hot accent
+      ctx.strokeText(main, 0, 0);
+      ctx.fillStyle = palette.caption[0];
+      ctx.fillText(main, 0, 0);
+    } else {
+      ctx.fillStyle = palette.ink;
+      ctx.fillText(main, size * 0.045, size * 0.06); // hard shadow pass
+      ctx.strokeText(main, 0, 0);
+      const fill = ctx.createLinearGradient(0, -size / 2, 0, size / 2);
+      fill.addColorStop(0, palette.caption[0]);
+      fill.addColorStop(1, palette.caption[1]);
+      ctx.fillStyle = fill;
+      ctx.fillText(main, 0, 0);
+    }
     ctx.restore();
   }
-  if (sub) {
+  if (script) drawBadge(ctx, w, bandH, palette);
+  if (sub && script) {
+    // The neon script line: the subtitle in a glowing hand-lettered face, Title Case as typed.
+    const line = subRaw.replace(/\w\S*/g, (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase());
+    let size = bandH * 0.36;
+    const setFont = () => { ctx.font = `${size}px Yellowtail, cursive`; };
+    setFont();
+    while (ctx.measureText(line).width > w * 0.8 && size > 8) {
+      size *= 0.94;
+      setFont();
+    }
+    ctx.save();
+    ctx.shadowColor = palette.accent;
+    ctx.shadowBlur = size * 0.5;
+    ctx.fillStyle = palette.sun;
+    ctx.fillText(line, w / 2, bandH * 0.76);
+    ctx.fillText(line, w / 2, bandH * 0.76); // a second pass deepens the neon glow
+    ctx.restore();
+  } else if (sub) {
     let size = bandH * 0.17;
     ctx.font = `${size}px Anton, sans-serif`;
     try { ctx.letterSpacing = `${size * 0.34}px`; } catch { /* older engines: spacing is a garnish */ }
@@ -523,7 +739,7 @@ export function renderCover(canvas, state, photos) {
   // Paper-white ground: the gutters between panels and the frame around them.
   ctx.fillStyle = '#f7f1e3';
   ctx.fillRect(0, 0, w, h);
-  paintTitleBand(ctx, w, h, palette, state.grade);
+  paintTitleBand(ctx, w, h, palette, state.titleStyle ?? 'gradient');
   const gutter = Math.max(5, Math.round(w * 0.007));
   const rects = panelRects(state.template, w, h);
   rects.forEach((rect, i) => {
@@ -535,6 +751,13 @@ export function renderCover(canvas, state, photos) {
     };
     if (i === 0) inset.y = rect.y + gutter; // the hero panel clears the band's accent line
     paintPanel(ctx, inset, state.panels[i], photos, state.grade, i);
+    // An ink keyline inside each panel's edge, so the collage reads as printed plates, not tiles.
+    ctx.save();
+    ctx.strokeStyle = palette.ink;
+    ctx.globalAlpha = 0.30;
+    ctx.lineWidth = Math.max(2, Math.round(w * 0.0022));
+    ctx.strokeRect(inset.x, inset.y, inset.w, inset.h);
+    ctx.restore();
   });
   letterCaption(ctx, w, h, state, palette);
   finishCover(ctx, w, h);

@@ -6,6 +6,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: 'Yellowtail';
+  src: url('./fonts/Yellowtail-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   --ink: #0d0618;
   --panel: #170b2a;
@@ -117,7 +125,10 @@ html, body {
 .sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
 .sw-sunset { background: linear-gradient(180deg, #ffd97a, #e85d75); }
 .sw-neon { background: linear-gradient(180deg, #19e3d2, #ff2e88); }
+.sw-heatwave { background: linear-gradient(180deg, #fff1cf, #ff7a3c, #6d1a5e); }
+.sw-ultraviolet { background: linear-gradient(180deg, #eafffb, #2e7fd9, #1b1040); }
 .sw-duotone { background: linear-gradient(180deg, #ffe3b3, #221243); }
+.sw-halftone { background: radial-gradient(circle at 35% 35%, #221243 2.5px, #f3e9d2 3px); }
 .sw-raw { background: linear-gradient(180deg, #d9e6ee, #5d7a99); }
 
 .field { display: flex; flex-direction: column; gap: 5px; font-weight: 600; font-size: 13px; margin-bottom: 10px; }

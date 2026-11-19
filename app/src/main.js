@@ -9,6 +9,7 @@ import {
   createCoverState,
   createPanel,
   fillAllPanels,
+  fillPanelsWithPhotos,
   panelRects,
   renderCover,
   renderCoverAt,
@@ -41,14 +42,16 @@ export function loadImage(url) {
   });
 }
 
-/** Loads the bundled Anton display face so the canvas letters with it, not a fallback. */
+/** Loads the bundled display faces so the canvas letters with them, not a fallback. */
 async function loadDisplayFont() {
-  try {
-    const face = new FontFace('Anton', "url('./fonts/Anton-Regular.woff2')");
-    await face.load();
-    document.fonts.add(face);
-  } catch {
-    // The CSS @font-face may still deliver it; the cover falls back to a bold sans.
+  for (const family of ['Anton', 'Yellowtail']) {
+    try {
+      const face = new FontFace(family, `url('./fonts/${family}-Regular.woff2')`);
+      await face.load();
+      document.fonts.add(face);
+    } catch {
+      // The CSS @font-face may still deliver it; the cover falls back to a bold sans or cursive.
+    }
   }
 }
 
@@ -138,6 +141,13 @@ for (const button of document.querySelectorAll('[data-grade]')) {
   button.addEventListener('click', () => {
     state.grade = button.dataset.grade;
     for (const el of document.querySelectorAll('[data-grade]')) el.classList.toggle('on', el === button);
+    redraw();
+  });
+}
+for (const button of document.querySelectorAll('[data-title-style]')) {
+  button.addEventListener('click', () => {
+    state.titleStyle = button.dataset.titleStyle;
+    for (const el of document.querySelectorAll('[data-title-style]')) el.classList.toggle('on', el === button);
     redraw();
   });
 }
@@ -255,12 +265,13 @@ for (const button of document.querySelectorAll('[data-export]')) {
   });
 }
 
-// The four bundled samples, free to use, wait in the tray so a cover is one click away.
+// The five bundled samples, free to use, wait in the tray so a cover is one click away.
 const SAMPLES = [
   ['pier', 'Pier at golden hour'],
   ['boulevard', 'Boulevard portrait'],
   ['neon', 'Neon street portrait'],
   ['drive', 'Sunset boulevard drive'],
+  ['pool', 'Rooftop pool at dusk'],
 ];
 
 /** Boot: load the font and the samples, then either set a shot scene or open the editor. */
@@ -281,10 +292,15 @@ async function boot() {
       captionInput,
       subtitleInput,
       async loadSample(name, caption, grade) {
-        const img = await loadImage(`samples/${name}.jpg`);
-        const index = addPhoto(img, name);
-        brushPhoto = index;
-        fillAllPanels(state, index);
+        // `name` may name one sample or a comma list of them: a list fills the panels in turn, a
+        // different photo in each panel, while a single name fills the whole collage as before.
+        const names = String(name ?? 'pier').split(',').map((s) => s.trim()).filter(Boolean);
+        const indices = [];
+        for (const sampleName of names) {
+          const img = await loadImage(`samples/${sampleName}.jpg`);
+          indices.push(addPhoto(img, sampleName));
+        }
+        brushPhoto = indices[0];
         if (caption !== null && caption !== undefined) {
           state.caption = caption;
           captionInput.value = caption;
@@ -298,12 +314,27 @@ async function boot() {
           state.grade = grade;
           for (const el of document.querySelectorAll('[data-grade]')) el.classList.toggle('on', el.dataset.grade === grade);
         }
-        // Pick the template that suits the stage: the strip poster for a wide stage, else the collage.
+        const titleStyle = query.get('title');
+        if (['block', 'gradient', 'script'].includes(titleStyle)) {
+          state.titleStyle = titleStyle;
+          for (const el of document.querySelectorAll('[data-title-style]')) el.classList.toggle('on', el.dataset.titleStyle === titleStyle);
+        }
+        // Pick the template that suits the stage: the strip poster for a wide stage, else the
+        // collage — unless the scene names one itself with `template`.
         const wide = window.innerWidth > window.innerHeight * 1.2;
-        state.template = wide && shot === 'cover' ? 'strip' : 'classic';
+        const wanted = query.get('template');
+        state.template = TEMPLATES.some((t) => t.id === wanted)
+          ? wanted
+          : (wide && shot === 'cover' ? 'strip' : 'classic');
         for (const el of document.querySelectorAll('[data-template]')) el.classList.toggle('on', el.dataset.template === state.template);
-        fillAllPanels(state, index);
+        if (indices.length > 1) fillPanelsWithPhotos(state, indices);
+        else fillAllPanels(state, indices[0]);
         redraw();
+      },
+      async addSampleToTray(name) {
+        // An editor scene also shows the samples it did not place, waiting in the tray.
+        const img = await loadImage(`samples/${name}.jpg`);
+        addPhoto(img, name);
       },
       redraw,
     });
