@@ -3,20 +3,94 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cover Snap</title>
+<title>Vice Frame — Cover Lab</title>
 <link rel="stylesheet" href="./style.css">
 </head>
 <body>
 <main class="app">
-  <section class="controls">
-    <h1>Cover Snap</h1>
-    <p>A photo and a caption, made into a square cover.</p>
-    <label>Photo <input id="photo" type="file" accept="image/*"></label>
-    <label>Caption <input id="caption" type="text" maxlength="40" value="Sunset Heist"></label>
-    <button id="export" type="button">Export PNG 1080 x 1080</button>
-    <p id="status" role="status"></p>
+  <aside class="panel">
+    <header class="brand">
+      <h1>Vice Frame</h1>
+      <p class="tagline">Cover Lab — your photo, a Vice City cover. Everything happens on your machine: no uploads, no watermarks.</p>
+    </header>
+
+    <section class="group">
+      <h2>1 · Photos</h2>
+      <label class="drop" for="photo-file">
+        <span class="drop-title">Add your photos</span>
+        <span class="drop-note">Click to pick, or drop image files onto the cover.</span>
+      </label>
+      <input id="photo-file" type="file" accept="image/*" multiple hidden>
+      <div id="tray" class="tray" aria-label="Loaded photos"></div>
+      <p class="hint">Pick a photo here, then click a panel to place it. Double-click a panel to swap its photo.</p>
+    </section>
+
+    <section class="group">
+      <h2>2 · Layout</h2>
+      <div class="seg" role="group" aria-label="Cover template">
+        <button type="button" data-template="classic" class="on">Classic Collage</button>
+        <button type="button" data-template="duo">Duo Split</button>
+        <button type="button" data-template="strip">Strip Poster</button>
+      </div>
+      <div class="seg" role="group" aria-label="Colour grade">
+        <button type="button" data-grade="sunset" class="on"><i class="sw sw-sunset"></i>Sunset</button>
+        <button type="button" data-grade="neon"><i class="sw sw-neon"></i>Neon Nights</button>
+        <button type="button" data-grade="duotone"><i class="sw sw-duotone"></i>Duotone Ink</button>
+        <button type="button" data-grade="raw"><i class="sw sw-raw"></i>Raw</button>
+      </div>
+    </section>
+
+    <section class="group">
+      <h2>3 · Caption</h2>
+      <label class="field">Headline
+        <input id="caption" type="text" maxlength="26" value="SUNSET HEIST">
+      </label>
+      <label class="field">Subtitle
+        <input id="subtitle" type="text" maxlength="42" value="A VICE FRAME COVER">
+      </label>
+    </section>
+
+    <section class="group">
+      <h2>4 · Panel</h2>
+      <p id="panel-label" class="panel-label">Panel 1 of 7</p>
+      <label class="field">Zoom
+        <input id="zoom" type="range" min="1" max="3" step="0.01" value="1">
+      </label>
+      <label class="field">Panel grade
+        <select id="panel-grade">
+          <option value="">Cover grade</option>
+          <option value="sunset">Sunset</option>
+          <option value="neon">Neon Nights</option>
+          <option value="duotone">Duotone Ink</option>
+          <option value="raw">Raw</option>
+        </select>
+      </label>
+      <div class="row">
+        <button id="fill-all" type="button">Fill all panels</button>
+        <button id="clear-panel" type="button" class="ghost">Clear panel</button>
+      </div>
+      <p class="hint">Drag a photo inside its panel to reposition it; scroll to zoom.</p>
+    </section>
+
+    <section class="group">
+      <h2>5 · Export PNG</h2>
+      <div class="seg" role="group" aria-label="Preview size">
+        <button type="button" data-size="1080x1080" class="on">Square 1080 × 1080</button>
+        <button type="button" data-size="1080x1350">Portrait 1080 × 1350</button>
+        <button type="button" data-size="1920x1080">Wide 1920 × 1080</button>
+      </div>
+      <div class="exports">
+        <button type="button" data-export="1080x1080">Download 1080 × 1080</button>
+        <button type="button" data-export="1080x1350">Download 1080 × 1350</button>
+        <button type="button" data-export="1920x1080">Download 1920 × 1080</button>
+      </div>
+      <p id="status" role="status"></p>
+    </section>
+  </aside>
+
+  <section id="stage" class="stage">
+    <canvas id="cover" width="1080" height="1080" aria-label="Your cover, live preview"></canvas>
   </section>
-  <canvas id="cover" width="1080" height="1080" aria-label="The cover"></canvas>
 </main>
 <script type="module" src="./src/main.js"></script>
 </body>

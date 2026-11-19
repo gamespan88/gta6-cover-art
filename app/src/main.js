@@ -1,16 +1,35 @@
-// Wires the page: pick a photo, type a caption, export the square cover as a PNG. A `?shot=` query sets up a fixed
-// scene for a screenshot instead (./shots.js).
-import { drawCover } from './cover.js';
+// VICE FRAME — Cover Lab: the editor.
+// Wires the page to the cover engine (./cover.js): photos from the person's own machine (file picker or
+// drag and drop, nothing is uploaded), a tray of loaded photos, three cover templates, four colour
+// grades, per-panel crop / pan / zoom and grade override, a live preview, and one-click PNG exports in
+// the three post sizes. A `?shot=` query sets up a fixed scene for screenshots instead (./shots.js).
+import {
+  GRADES,
+  TEMPLATES,
+  createCoverState,
+  createPanel,
+  fillAllPanels,
+  panelRects,
+  renderCover,
+  renderCoverAt,
+  syncPanels,
+} from './cover.js';
 import { runShot } from './shots.js';
 
 const canvas = document.getElementById('cover');
-const caption = document.getElementById('caption');
+const tray = document.getElementById('tray');
 const status = document.getElementById('status');
-let photo = null;
+const captionInput = document.getElementById('caption');
+const subtitleInput = document.getElementById('subtitle');
+const zoomInput = document.getElementById('zoom');
+const panelGrade = document.getElementById('panel-grade');
+const panelLabel = document.getElementById('panel-label');
 
-function redraw() {
-  drawCover(canvas, photo, caption.value);
-}
+const state = createCoverState();
+const photos = []; // every loaded image: { img, name }
+let brushPhoto = -1; // the tray photo a panel click assigns
+let selectedPanel = 0;
+let previewSize = { w: 1080, h: 1080 };
 
 /** Loads an image from a URL, resolving to the image once it can be drawn. */
 export function loadImage(url) {
@@ -22,30 +41,287 @@ export function loadImage(url) {
   });
 }
 
-document.getElementById('photo').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  photo = await loadImage(URL.createObjectURL(file));
-  redraw();
-});
-caption.addEventListener('input', redraw);
-document.getElementById('export').addEventListener('click', () => {
-  canvas.toBlob((blob) => {
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'cover-1080x1080.png';
-    a.click();
-    status.textContent = 'Saved cover-1080x1080.png';
-  }, 'image/png');
-});
+/** Loads the bundled Anton display face so the canvas letters with it, not a fallback. */
+async function loadDisplayFont() {
+  try {
+    const face = new FontFace('Anton', "url('./fonts/Anton-Regular.woff2')");
+    await face.load();
+    document.fonts.add(face);
+  } catch {
+    // The CSS @font-face may still deliver it; the cover falls back to a bold sans.
+  }
+}
 
-const shot = new URLSearchParams(location.search).get('shot');
-if (shot) {
-  runShot(shot, new URLSearchParams(location.search), async (sample, text) => {
-    photo = await loadImage(sample);
-    caption.value = text;
-    redraw();
+/** Redraws the preview and the selection outline of the panel being edited. */
+function redraw() {
+  syncPanels(state);
+  renderCover(canvas, state, photos.map((p) => p.img));
+  const rects = panelRects(state.template, canvas.width, canvas.height);
+  const rect = rects[selectedPanel];
+  if (rect && !document.body.classList.contains('shot-cover')) {
+    const ctx = canvas.getContext('2d');
+    ctx.save();
+    ctx.strokeStyle = '#19e3d2';
+    ctx.lineWidth = Math.max(3, canvas.width * 0.004);
+    ctx.setLineDash([canvas.width * 0.02, canvas.width * 0.012]);
+    ctx.strokeRect(rect.x + 2, rect.y + 2, rect.w - 4, rect.h - 4);
+    ctx.restore();
+  }
+  panelLabel.textContent = `Panel ${selectedPanel + 1} of ${rects.length}`;
+  const panel = state.panels[selectedPanel];
+  if (panel) {
+    zoomInput.value = String(panel.zoom);
+    panelGrade.value = panel.grade ?? '';
+  }
+}
+
+/** Adds an image to the photo tray and returns its index in the photo list. */
+function addPhoto(img, name) {
+  photos.push({ img, name });
+  const index = photos.length - 1;
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'tray-photo';
+  button.title = name;
+  const thumb = document.createElement('img');
+  thumb.src = img.src;
+  thumb.alt = name;
+  button.appendChild(thumb);
+  button.addEventListener('click', () => {
+    brushPhoto = index;
+    for (const el of tray.children) el.classList.toggle('chosen', el === button);
   });
-} else {
+  tray.appendChild(button);
+  if (brushPhoto === -1) button.click();
+  return index;
+}
+
+/** Reads image files the person picked or dropped; their photos never leave the machine. */
+async function addPhotoFiles(files) {
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) continue;
+    const img = await loadImage(URL.createObjectURL(file));
+    addPhoto(img, file.name);
+  }
+  status.textContent = `${photos.length} photo${photos.length === 1 ? '' : 's'} loaded — click a panel to place the chosen one.`;
   redraw();
 }
+
+document.getElementById('photo-file').addEventListener('change', (e) => {
+  addPhotoFiles(e.target.files);
+  e.target.value = '';
+});
+
+const stage = document.getElementById('stage');
+stage.addEventListener('dragover', (e) => {
+  e.preventDefault();
+  stage.classList.add('dragging');
+});
+stage.addEventListener('dragleave', () => stage.classList.remove('dragging'));
+stage.addEventListener('drop', (e) => {
+  e.preventDefault();
+  stage.classList.remove('dragging');
+  addPhotoFiles(e.dataTransfer.files);
+});
+
+// Template and grade pickers.
+for (const button of document.querySelectorAll('[data-template]')) {
+  button.addEventListener('click', () => {
+    state.template = button.dataset.template;
+    for (const el of document.querySelectorAll('[data-template]')) el.classList.toggle('on', el === button);
+    selectedPanel = 0;
+    syncPanels(state);
+    redraw();
+  });
+}
+for (const button of document.querySelectorAll('[data-grade]')) {
+  button.addEventListener('click', () => {
+    state.grade = button.dataset.grade;
+    for (const el of document.querySelectorAll('[data-grade]')) el.classList.toggle('on', el === button);
+    redraw();
+  });
+}
+
+// Caption and subtitle.
+captionInput.addEventListener('input', () => {
+  state.caption = captionInput.value;
+  redraw();
+});
+subtitleInput.addEventListener('input', () => {
+  state.subtitle = subtitleInput.value;
+  redraw();
+});
+
+// Per-panel controls: zoom, grade override, and filling every panel with the chosen photo.
+zoomInput.addEventListener('input', () => {
+  const panel = state.panels[selectedPanel];
+  if (panel) panel.zoom = Number(zoomInput.value);
+  redraw();
+});
+panelGrade.addEventListener('change', () => {
+  const panel = state.panels[selectedPanel];
+  if (panel) panel.grade = panelGrade.value || null;
+  redraw();
+});
+document.getElementById('fill-all').addEventListener('click', () => {
+  if (brushPhoto < 0) {
+    status.textContent = 'Load a photo first, then fill the panels with it.';
+    return;
+  }
+  fillAllPanels(state, brushPhoto);
+  redraw();
+});
+document.getElementById('clear-panel').addEventListener('click', () => {
+  const panel = state.panels[selectedPanel];
+  if (panel) Object.assign(panel, createPanel());
+  redraw();
+});
+
+// Panel picking and panning on the preview canvas.
+function canvasPoint(e) {
+  const box = canvas.getBoundingClientRect();
+  return {
+    x: ((e.clientX - box.left) / box.width) * canvas.width,
+    y: ((e.clientY - box.top) / box.height) * canvas.height,
+  };
+}
+let drag = null;
+canvas.addEventListener('pointerdown', (e) => {
+  const point = canvasPoint(e);
+  const rects = panelRects(state.template, canvas.width, canvas.height);
+  const hit = rects.findIndex((r) => point.x >= r.x && point.x <= r.x + r.w && point.y >= r.y && point.y <= r.y + r.h);
+  if (hit === -1) return;
+  selectedPanel = hit;
+  if (brushPhoto >= 0 && state.panels[hit].photo !== brushPhoto && e.shiftKey === false && drag === null && state.panels[hit].photo === -1) {
+    state.panels[hit].photo = brushPhoto; // an empty panel takes the chosen photo on click
+  }
+  drag = { x: point.x, y: point.y, moved: false };
+  canvas.setPointerCapture(e.pointerId);
+  redraw();
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!drag) return;
+  const point = canvasPoint(e);
+  const panel = state.panels[selectedPanel];
+  const rects = panelRects(state.template, canvas.width, canvas.height);
+  const rect = rects[selectedPanel];
+  if (panel && rect && panel.photo >= 0) {
+    panel.ox = Math.max(-1, Math.min(1, panel.ox + ((point.x - drag.x) / rect.w) * 1.7));
+    panel.oy = Math.max(-1, Math.min(1, panel.oy + ((point.y - drag.y) / rect.h) * 1.7));
+  }
+  drag = { x: point.x, y: point.y, moved: true };
+  redraw();
+});
+canvas.addEventListener('pointerup', () => { drag = null; });
+canvas.addEventListener('dblclick', () => {
+  // A double click assigns the chosen tray photo to the selected panel outright.
+  if (brushPhoto >= 0 && state.panels[selectedPanel]) {
+    state.panels[selectedPanel].photo = brushPhoto;
+    redraw();
+  }
+});
+canvas.addEventListener('wheel', (e) => {
+  const panel = state.panels[selectedPanel];
+  if (!panel || panel.photo < 0) return;
+  e.preventDefault();
+  panel.zoom = Math.max(1, Math.min(3, panel.zoom * (e.deltaY < 0 ? 1.08 : 0.93)));
+  redraw();
+}, { passive: false });
+
+// Preview size: the canvas takes the chosen post size, scaled down by CSS.
+for (const button of document.querySelectorAll('[data-size]')) {
+  button.addEventListener('click', () => {
+    const [w, h] = button.dataset.size.split('x').map(Number);
+    previewSize = { w, h };
+    canvas.width = w;
+    canvas.height = h;
+    for (const el of document.querySelectorAll('[data-size]')) el.classList.toggle('on', el === button);
+    redraw();
+  });
+}
+
+// Exports: render the cover offscreen at the exact size and download the PNG.
+for (const button of document.querySelectorAll('[data-export]')) {
+  button.addEventListener('click', () => {
+    const [w, h] = button.dataset.export.split('x').map(Number);
+    const off = renderCoverAt(state, photos.map((p) => p.img), w, h);
+    off.toBlob((blob) => {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `vice-frame-cover-${w}x${h}.png`;
+      a.click();
+      status.textContent = `Saved vice-frame-cover-${w}x${h}.png`;
+    }, 'image/png');
+  });
+}
+
+// The four bundled samples, free to use, wait in the tray so a cover is one click away.
+const SAMPLES = [
+  ['pier', 'Pier at golden hour'],
+  ['boulevard', 'Boulevard portrait'],
+  ['neon', 'Neon street portrait'],
+  ['drive', 'Sunset boulevard drive'],
+];
+
+/** Boot: load the font and the samples, then either set a shot scene or open the editor. */
+async function boot() {
+  await loadDisplayFont();
+  const query = new URLSearchParams(location.search);
+  const shot = query.get('shot');
+  if (shot === 'cover') {
+    // The cover fills the stage, so the canvas takes the export size nearest the stage's shape.
+    const aspect = window.innerWidth / window.innerHeight;
+    if (aspect > 1.2) { canvas.width = 1920; canvas.height = 1080; }
+    else if (aspect < 0.85) { canvas.width = 1080; canvas.height = 1350; }
+    else { canvas.width = 1080; canvas.height = 1080; }
+  }
+  if (shot) {
+    await runShot(shot, query, {
+      state,
+      captionInput,
+      subtitleInput,
+      async loadSample(name, caption, grade) {
+        const img = await loadImage(`samples/${name}.jpg`);
+        const index = addPhoto(img, name);
+        brushPhoto = index;
+        fillAllPanels(state, index);
+        if (caption !== null && caption !== undefined) {
+          state.caption = caption;
+          captionInput.value = caption;
+        }
+        const sub = query.get('subtitle');
+        if (sub) {
+          state.subtitle = sub;
+          subtitleInput.value = sub;
+        }
+        if (grade) {
+          state.grade = grade;
+          for (const el of document.querySelectorAll('[data-grade]')) el.classList.toggle('on', el.dataset.grade === grade);
+        }
+        // Pick the template that suits the stage: the strip poster for a wide stage, else the collage.
+        const wide = window.innerWidth > window.innerHeight * 1.2;
+        state.template = wide && shot === 'cover' ? 'strip' : 'classic';
+        for (const el of document.querySelectorAll('[data-template]')) el.classList.toggle('on', el.dataset.template === state.template);
+        fillAllPanels(state, index);
+        redraw();
+      },
+      redraw,
+    });
+    return;
+  }
+  for (const [name, label] of SAMPLES) {
+    try {
+      const img = await loadImage(`samples/${name}.jpg`);
+      addPhoto(img, label);
+    } catch {
+      // A missing sample never blocks the editor.
+    }
+  }
+  if (photos.length) {
+    fillAllPanels(state, 0);
+    brushPhoto = 0;
+  }
+  redraw();
+}
+
+boot();
