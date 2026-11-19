@@ -123,15 +123,17 @@ export function createPanel(photoIndex = -1) {
   return { photo: photoIndex, zoom: 1, ox: 0, oy: 0, grade: null };
 }
 
-// Varied crops used when one photo fills every panel, so a single-photo cover still reads as a collage.
+// Varied crops used when one photo fills every panel, so a single-photo cover still reads as a collage:
+// the hero panel keeps nearly the whole photo, the mid panels sit closer, and the small panels go in
+// tight on details — a face, a hand, the foot of the scene — instead of repeating the same framing.
 const FILL_CROPS = [
-  { zoom: 1.12, ox: 0.0, oy: -0.1 },
-  { zoom: 1.45, ox: -0.35, oy: -0.3 },
-  { zoom: 1.5, ox: 0.4, oy: 0.1 },
-  { zoom: 1.7, ox: -0.2, oy: 0.35 },
-  { zoom: 1.7, ox: 0.3, oy: -0.35 },
-  { zoom: 1.35, ox: 0.0, oy: 0.3 },
-  { zoom: 1.55, ox: -0.4, oy: 0.0 },
+  { zoom: 1.06, ox: 0.05, oy: 0.1 },
+  { zoom: 1.65, ox: 0.3, oy: 0.4 },
+  { zoom: 1.5, ox: -0.4, oy: -0.15 },
+  { zoom: 2.35, ox: 0.35, oy: 0.45 },
+  { zoom: 2.15, ox: -0.35, oy: -0.4 },
+  { zoom: 2.5, ox: 0.1, oy: 0.55 },
+  { zoom: 1.8, ox: -0.15, oy: -0.55 },
 ];
 
 /** Fills every panel of the state's template with one photo, each panel cropped differently. */
@@ -298,7 +300,7 @@ function applyDuotone(canvas, palette) {
 /** The CSS filter a grade applies while a photo is drawn. */
 function gradeFilter(grade) {
   switch (grade) {
-    case 'sunset': return 'saturate(1.38) contrast(1.09) sepia(0.22) hue-rotate(-8deg) brightness(1.03)';
+    case 'sunset': return 'saturate(1.5) contrast(1.14) sepia(0.4) hue-rotate(-10deg) brightness(1.02)';
     case 'neon': return 'saturate(1.55) contrast(1.16) hue-rotate(6deg) brightness(1.02)';
     case 'duotone': return 'saturate(0.25) contrast(1.12) brightness(1.02)';
     default: return 'saturate(1.1) contrast(1.05)';
@@ -313,17 +315,22 @@ function paintGradeLight(ctx, rect, grade, palette) {
   ctx.rect(x, y, w, h);
   ctx.clip();
   if (grade === 'sunset') {
+    // Golden hour, laid on thick: hot orange burning low in the frame, pink through the middle, and a
+    // second warm pass over the whole panel so even a midday photo turns to sunset, not just a tint.
     const glow = ctx.createLinearGradient(x, y + h, x, y);
-    glow.addColorStop(0, 'rgba(232, 93, 117, 0.42)');
-    glow.addColorStop(0.45, 'rgba(255, 158, 94, 0.12)');
-    glow.addColorStop(1, 'rgba(255, 217, 122, 0.05)');
+    glow.addColorStop(0, 'rgba(255, 94, 58, 0.58)');
+    glow.addColorStop(0.38, 'rgba(255, 140, 66, 0.34)');
+    glow.addColorStop(0.72, 'rgba(232, 93, 140, 0.22)');
+    glow.addColorStop(1, 'rgba(255, 190, 90, 0.14)');
     ctx.globalCompositeOperation = 'overlay';
     ctx.fillStyle = glow;
+    ctx.fillRect(x, y, w, h);
+    ctx.fillStyle = 'rgba(255, 150, 70, 0.20)';
     ctx.fillRect(x, y, w, h);
     ctx.globalCompositeOperation = 'multiply';
     const shade = ctx.createLinearGradient(x, y + h * 0.55, x, y + h);
     shade.addColorStop(0, 'rgba(36, 16, 49, 0)');
-    shade.addColorStop(1, 'rgba(36, 16, 49, 0.35)');
+    shade.addColorStop(1, 'rgba(36, 16, 49, 0.38)');
     ctx.fillStyle = shade;
     ctx.fillRect(x, y, w, h);
   } else if (grade === 'neon') {
@@ -393,23 +400,12 @@ function paintPanel(ctx, rect, panel, photos, grade, index) {
   if (ownGrade === 'duotone') applyDuotone(off, ownPalette);
   else paintGradeLight(octx, { x: 0, y: 0, w: off.width, h: off.height }, ownGrade, ownPalette);
   ctx.drawImage(off, rect.x, rect.y);
-  // A palm silhouette leans into the hero panel's bottom corner, the poster's signature flourish.
-  if (index === 0) {
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(rect.x, rect.y, rect.w, rect.h);
-    ctx.clip();
-    ctx.globalAlpha = 0.5;
-    const palmH = rect.h * 0.36;
-    drawPalm(ctx, rect.x + rect.w * 0.05, rect.y + rect.h - palmH, palmH, ownPalette.ink, 1);
-    ctx.restore();
-  }
 }
 
 // ---------------------------------------------------------------------------
 // The title band and caption.
 
-/** Paints the band behind the caption: a deep gradient, the sun rising at the right, palms at the edges. */
+/** Paints the band behind the caption: a deep gradient and the retro sun sitting whole inside it. */
 function paintTitleBand(ctx, w, h, palette, grade) {
   const bandH = h * TITLE_BAND;
   const grad = ctx.createLinearGradient(0, 0, 0, bandH);
@@ -417,10 +413,9 @@ function paintTitleBand(ctx, w, h, palette, grade) {
   grad.addColorStop(1, palette.band[1]);
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, w, bandH);
-  // A whole retro sun sits inside the band at the right, clear of the centred caption.
+  // A whole retro sun sits inside the band at the right, clear of the centred caption. Nothing else
+  // shares the band: a silhouette clipped by the band's edge reads as a stray mark, not an ornament.
   drawSunDisc(ctx, w * 0.94, bandH * 0.5, bandH * 0.33, palette.sun);
-  // A palm leans in from the left edge, its trunk reaching the band's foot.
-  drawPalm(ctx, w * 0.03, bandH * 0.26, bandH * 0.78, palette.ink, 1);
   // A hairline of accent under the band.
   ctx.fillStyle = palette.accent;
   ctx.fillRect(0, bandH, w, Math.max(2, h * 0.004));
